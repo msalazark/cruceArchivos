@@ -178,6 +178,19 @@ def ejecutar_cruce_ec():
     print(stockECDemanda.shape)
     bar["value"] = 40
 
+
+    query = """
+    SELECT stockEC.*  \
+    FROM stockEC \
+    LEFT OUTER JOIN stockECDemanda \
+    ON stockEC.sku = stockECDemanda.sku \
+    WHERE stockECDemanda.sku IS NULL 
+    """
+    stockECFinal = sqldf(query)
+    print(stockECFinal.shape)  # Stock sin demanda
+
+
+    # Stock Actual
     stockActual601 = stockActual[stockActual["source_code"] == "601"]
     print(stockActual601.shape)
     bar["value"] = 50
@@ -186,11 +199,11 @@ def ejecutar_cruce_ec():
     log = log + "Stock de productos actuales" + "\n"
     text_area.insert( tkinter.INSERT, log)
     query = """
-    SELECT stockEC.* \
-    FROM stockEC \
+    SELECT stockECFinal.* \
+    FROM stockECFinal \
     INNER JOIN stockActual601 \
-    ON ( stockActual601.sku = stockEC.sku AND stockActual601.source_code = stockEC.source_code ) \
-    WHERE stockActual601.quantity <> stockEC.quantity 
+    ON ( stockActual601.sku = stockECFinal.sku AND stockActual601.source_code = stockECFinal.source_code ) \
+    WHERE stockActual601.quantity <> stockECFinal.quantity 
     """
     stockECActualizar = sqldf(query)
     print(stockECActualizar.shape)
@@ -202,10 +215,10 @@ def ejecutar_cruce_ec():
     text_area.insert( tkinter.INSERT, log)
 
     query = """
-     SELECT stockEC.* \
-     FROM stockEC \
+     SELECT stockECFinal.* \
+     FROM stockECFinal \
      LEFT OUTER JOIN stockActual601 \
-     ON ( stockActual601.sku = stockEC.sku AND stockActual601.source_code = stockEC.source_code ) 
+     ON ( stockActual601.sku = stockECFinal.sku AND stockActual601.source_code = stockECFinal.source_code ) 
      and stockActual601.sku IS NULL
      """
     stockECNuevo = sqldf(query)
@@ -220,9 +233,9 @@ def ejecutar_cruce_ec():
     query = """
     SELECT stockActual601.*  \
     FROM stockActual601 \
-    LEFT OUTER JOIN stockEC \
-    ON ( stockActual601.sku = stockEC.sku AND stockActual601.source_code = stockEC.source_code ) \
-    WHERE stockEC.sku IS NULL  \
+    LEFT OUTER JOIN stockECFinal \
+    ON ( stockActual601.sku = stockECFinal.sku AND stockActual601.source_code = stockECFinal.source_code ) \
+    WHERE stockECFinal.sku IS NULL  \
     AND stockActual601.status <> 0
     """
     stockECPreApagar = sqldf(query)
@@ -236,9 +249,9 @@ def ejecutar_cruce_ec():
     ON stockECPreApagar.sku = stockECDemanda.sku \
     WHERE stockECDemanda.sku IS NULL 
     """
-
     stockECApagar = sqldf(query)
     print(stockECApagar.shape)
+
     stockECApagar["status"] = 0
     stockECApagar["quantity"] = 0
     finalEC = pd.concat( [ stockECActualizar, stockECNuevo, stockECApagar] ).drop_duplicates()
