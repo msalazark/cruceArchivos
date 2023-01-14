@@ -12,7 +12,7 @@ from tkinter import filedialog as fd
 from tkinter import scrolledtext
 from tkinter.messagebox import showinfo
 
-sepGeneral = ";"
+sepGeneral = ","
 fecha = datetime.now().strftime('%Y-%m-%d')
 fechaStock = datetime.now().strftime('%Y%m%d')
 
@@ -236,7 +236,7 @@ def ejecutar_cruce_ec():
     LEFT OUTER JOIN stockECFinal \
     ON ( stockActual601.sku = stockECFinal.sku AND stockActual601.source_code = stockECFinal.source_code ) \
     WHERE stockECFinal.sku IS NULL  \
-    AND stockActual601.status <> 0
+    AND stockActual601.quantity <> 0
     """
     stockECPreApagar = sqldf(query)
     print(stockECPreApagar.shape)
@@ -304,7 +304,7 @@ def ejecutar_cruce():
     FROM stockNuevo \
     INNER JOIN catalogo \
     ON stockNuevo.sku = catalogo.sku \
-    WHERE stockNuevo.source_code in ('051', '104', '105', '108', '109', '200', '209', '300', '400', '500') 
+    WHERE stockNuevo.source_code in ('051', '104', '105', '108', '109', '200', '209', '300', '400', '500', '052', '057', '065', '060', '063') 
     """
     stockNuevoSel = sqldf(query)
     print(stockNuevoSel.shape)
@@ -326,7 +326,7 @@ def ejecutar_cruce():
             FROM stockNuevoSel \
             INNER JOIN stockActual \
             ON stockActual.sku = stockNuevoSel.sku AND stockActual.source_code = stockNuevoSel.source_code \
-            WHERE stockNuevoSel.source_code in ('051', '104', '105', '108', '109', '200', '209', '300', '400', '500')  \
+            WHERE stockNuevoSel.source_code in ('051', '104', '105', '108', '109', '200', '209', '300', '400', '500', '052', '057', '065', '060', '063')  \
             AND stockNuevoSel.quantity <> stockActual.quantity
             """
     # print(query)
@@ -347,9 +347,9 @@ def ejecutar_cruce():
     FROM stockActual  \
     LEFT OUTER JOIN stockNuevoSel \
     ON stockActual.sku = stockNuevoSel.sku AND stockActual.source_code = stockNuevoSel.source_code \
-    WHERE stockActual.source_code in ('051', '104', '105', '108', '109', '200', '209', '300', '400', '500') \
+    WHERE stockActual.source_code in ('051', '104', '105', '108', '109', '200', '209', '300', '400', '500', '052', '057', '065', '060', '063') \
     AND stockNuevoSel.sku IS NULL \
-    AND stockActual.status <> 0 
+    AND stockActual.quantity <> 0 
     """
     stockApagar = sqldf(query)
     stockApagar["status"] = 0
