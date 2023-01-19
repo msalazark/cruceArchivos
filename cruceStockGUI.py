@@ -44,8 +44,6 @@ def cargaArchivoStockNuevo(archivo1):
               }
     stockNuevo = pd.read_csv(archivo1, sep=sepGeneral, dtype=dtypes)
     stockNuevo.rename(columns={"StockAlm": "quantity"}, inplace=True)
-    print(stockNuevo.shape)
-
     return stockNuevo
 
 def exportar(pre_final, prefijo, largoLote):
@@ -72,7 +70,6 @@ def parse_args():
 
 def select_file_nuevo():
     filetypes = (
-        ('text files', '*.txt'),
         ('CSV files', '*.csv'),
         ('All files', '*.*')
     )
@@ -86,7 +83,6 @@ def select_file_nuevo():
 
 def select_file_nuevo_ec():
     filetypes = (
-        ('text files', '*.txt'),
         ('CSV files', '*.csv'),
         ('All files', '*.*')
     )
@@ -99,7 +95,6 @@ def select_file_nuevo_ec():
 
 def select_file_actual():
     filetypes = (
-        ('text files', '*.txt'),
         ('CSV files', '*.csv'),
         ('All files', '*.*')
     )
@@ -112,7 +107,6 @@ def select_file_actual():
 
 def select_file_catalogo():
     filetypes = (
-        ('text files', '*.txt'),
         ('CSV files', '*.csv'),
         ('All files', '*.*')
     )
@@ -135,34 +129,34 @@ def ejecutar_cruce_ec():
                            skip_blank_lines=True,
                            encoding='utf-8',
                            encoding_errors='ignore')
-    print(catalogo.shape)
+    print("Catalogo: ", catalogo.shape)
     bar["value"] = 5
 
     log = log + "Cargando stock actual" + "\n"
     #label_file_explorer_proceso.configure(text=log)
     text_area.insert( tkinter.INSERT, log)
     stockActual = cargaArchivoStockActual(varchivoStockActual)
-    print(stockActual.shape)
+    print("Stock Actual: ", stockActual.shape)
     bar["value"] = 10
-
 
     log = log + "Cargando stock nuevo EC" + "\n"
     text_area.insert( tkinter.INSERT, log)
     stock = cargaArchivoStockNuevo(varchivoStockNuevoEC)
-    print(stock.shape)
+    print("Stock a cargar EC:", stock.shape)
     bar["value"] = 20
 
-    # Los que están en tiendas selecionadas
+    # Los que están en la tienda EC
     log = log + "Realizando cruce con catalogo" + "\n"
     text_area.insert( tkinter.INSERT, log)
     query = """
             SELECT stock.* \
             FROM stock \
             INNER JOIN catalogo \
-            ON stock.sku = catalogo.sku 
+            ON stock.sku = catalogo.sku  \
+            WHERE stock.sku NOT LIKE 'D%'
             """
     stockEC = sqldf(query)
-    print(stockEC.shape)
+    print("Stock EC Nuevo en Catálogo: ", stockEC.shape)
     bar["value"] = 30
 
     # Stock Demanda
@@ -172,10 +166,10 @@ def ejecutar_cruce_ec():
     INNER JOIN catalogo \
     ON stock.sku = catalogo.sku \
     WHERE catalogo.categories LIKE '%Default Category/LIBROS A PEDIDO%' \
-    AND catalogo.sku LIKE 'D%' \
+    AND stock.sku LIKE 'D%' 
     """
     stockECDemanda = sqldf(query)
-    print(stockECDemanda.shape)
+    print("Stock Demanda Actual :",  stockECDemanda.shape)
     bar["value"] = 40
 
 
@@ -184,16 +178,18 @@ def ejecutar_cruce_ec():
     FROM stockEC \
     LEFT OUTER JOIN stockECDemanda \
     ON stockEC.sku = stockECDemanda.sku \
-    WHERE stockECDemanda.sku IS NULL 
+    WHERE stockECDemanda.sku IS NULL \
+    AND stockEC.sku NOT LIKE 'D%'
     """
     stockECFinal = sqldf(query)
-    print(stockECFinal.shape)  # Stock sin demanda
-
+    print("Stock EC Sin demanda ", stockECFinal.shape)  # Stock sin demanda
 
     # Stock Actual
     stockActual601 = stockActual[stockActual["source_code"] == "601"]
-    print(stockActual601.shape)
+    print("Stock Actual EC :", stockActual601.shape)
     bar["value"] = 50
+
+    print("********  Cruce Cargar ********")
 
     # Los que están en Stock Actual y están en Stock -
     log = log + "Stock de productos actuales" + "\n"
@@ -203,10 +199,11 @@ def ejecutar_cruce_ec():
     FROM stockECFinal \
     INNER JOIN stockActual601 \
     ON ( stockActual601.sku = stockECFinal.sku AND stockActual601.source_code = stockECFinal.source_code ) \
-    WHERE stockActual601.quantity <> stockECFinal.quantity 
+    WHERE stockECFinal.sku NOT LIKE 'D%' AND stockActual601.quantity <> stockECFinal.quantity \
+    AND stockActual601.sku NOT LIKE 'D%' 
     """
     stockECActualizar = sqldf(query)
-    print(stockECActualizar.shape)
+    print("Stock a actualizar: ", stockECActualizar.shape)
     #stockECActualizar.drop(columns={"level_0", "index"}, inplace=True)
     bar["value"] = 60
 
@@ -218,11 +215,12 @@ def ejecutar_cruce_ec():
      SELECT stockECFinal.* \
      FROM stockECFinal \
      LEFT OUTER JOIN stockActual601 \
-     ON ( stockActual601.sku = stockECFinal.sku AND stockActual601.source_code = stockECFinal.source_code ) 
-     and stockActual601.sku IS NULL
+     ON ( stockActual601.sku = stockECFinal.sku AND stockActual601.source_code = stockECFinal.source_code ) \
+     WHERE stockActual601.sku IS NULL \
+     AND stockECFinal.sku NOT LIKE 'D%' 
      """
     stockECNuevo = sqldf(query)
-    print(stockECNuevo.shape)
+    print("Stock nuevo a cargar ", stockECNuevo.shape)
     # stockECActualizar.drop(columns={"level_0", "index"}, inplace=True)
     bar["value"] = 70
 
@@ -236,28 +234,22 @@ def ejecutar_cruce_ec():
     LEFT OUTER JOIN stockECFinal \
     ON ( stockActual601.sku = stockECFinal.sku AND stockActual601.source_code = stockECFinal.source_code ) \
     WHERE stockECFinal.sku IS NULL  \
-    AND stockActual601.quantity <> 0
-    """
-    stockECPreApagar = sqldf(query)
-    print(stockECPreApagar.shape)
-    bar["value"] = 80
-
-    query = """
-    SELECT stockECPreApagar.*  \
-    FROM stockECPreApagar \
-    LEFT OUTER JOIN stockECDemanda \
-    ON stockECPreApagar.sku = stockECDemanda.sku \
-    WHERE stockECDemanda.sku IS NULL 
+    AND stockActual601.quantity > 0 \
+    AND stockActual601.sku NOT LIKE 'D%'
     """
     stockECApagar = sqldf(query)
-    print(stockECApagar.shape)
+    print("Stock a apagar: ", stockECApagar.shape)
+    bar["value"] = 80
 
     stockECApagar["status"] = 0
     stockECApagar["quantity"] = 0
+
+    print("********  Merge  ********")
     finalEC = pd.concat( [ stockECActualizar, stockECNuevo, stockECApagar] ).drop_duplicates()
-    print(finalEC.shape)
+    print("Registros a cargar ", finalEC.shape)
     bar["value"] = 90
 
+    print("********  Exportar  ********")
     exportar(finalEC, "ActualizarApagarStockTienda601_", 5000)
     log = log + "Archivos exportados" + "\n"
     text_area.insert( tkinter.INSERT, log)
