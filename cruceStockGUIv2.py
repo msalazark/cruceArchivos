@@ -31,7 +31,7 @@ def cargaArchivoStockActual(archivo1):
               "status": str,
               "StockAlm": int
               }
-    stock = pd.read_csv(archivo1, sep=",", dtype=dtypes)
+    stock = pd.read_csv(archivo1, sep="\t", dtype=dtypes)
     stock.rename(columns={"StockAlm": "quantity"}, inplace=True)
     return stock
 
@@ -72,6 +72,7 @@ def parse_args():
 
 def select_file_nuevo():
     filetypes = (
+        ('TXT files', '*.txt'),
         ('CSV files', '*.csv'),
         ('All files', '*.*')
     )
