@@ -1,6 +1,5 @@
 # This is a sample Python script.
 import tkinter
-
 import pandas as pd
 from datetime import datetime
 from pandasql import sqldf
@@ -47,6 +46,8 @@ def cargaArchivoStockNuevo(archivo1):
     return stockNuevo
 
 def exportar(pre_final, prefijo, largoLote):
+    archivo = prefijo + fecha +  ".csv"
+    pre_final.to_csv(archivo, index=False)
     totalRegExport = pre_final.shape[0]
     rango_inferior = 0
     lotes = int((totalRegExport / largoLote) + 1) + 1
@@ -68,6 +69,7 @@ def parse_args():
     parser.add_argument('--stockNuevo', '-sn', help="Stock Nuevo", type=str)
     return parser.parse_args()
 
+
 def select_file_nuevo():
     filetypes = (
         ('CSV files', '*.csv'),
@@ -81,6 +83,7 @@ def select_file_nuevo():
     print(archivoStockNuevo)
     label_file_explorer_nuevo.configure(text=archivoStockNuevo)
 
+
 def select_file_nuevo_ec():
     filetypes = (
         ('CSV files', '*.csv'),
@@ -92,6 +95,7 @@ def select_file_nuevo_ec():
         filetypes=filetypes )
     print(archivoStockNuevoEC)
     label_file_explorer_nuevo_ec.configure(text=archivoStockNuevoEC)
+
 
 def select_file_actual():
     filetypes = (
@@ -105,6 +109,7 @@ def select_file_actual():
     print(archivoStockActual)
     label_file_explorer_actual.configure(text=archivoStockActual)
 
+
 def select_file_catalogo():
     filetypes = (
         ('CSV files', '*.csv'),
@@ -116,6 +121,7 @@ def select_file_catalogo():
         filetypes=filetypes)
     print(archivoCatalogo)
     label_file_explorer_catalogo.configure(text=archivoCatalogo)
+
 
 def ejecutar_cruce_ec():
     log = ""
@@ -161,31 +167,31 @@ def ejecutar_cruce_ec():
 
     # Stock Demanda
     query = """
-    SELECT stock.* \
-    FROM stock  \
-    INNER JOIN catalogo \
-    ON stock.sku = catalogo.sku \
-    WHERE catalogo.categories LIKE '%Default Category/LIBROS A PEDIDO%' \
-    AND stock.sku LIKE 'D%' 
-    """
+            SELECT stock.* \
+            FROM stock  \
+            INNER JOIN catalogo \
+            ON stock.sku = catalogo.sku \
+            WHERE catalogo.categories LIKE '%Default Category/LIBROS A PEDIDO%' \
+            AND stock.sku LIKE 'D%' 
+            """
     stockECDemanda = sqldf(query)
     print("Stock Demanda Actual :",  stockECDemanda.shape)
     bar["value"] = 40
 
 
     query = """
-    SELECT stockEC.*  \
-    FROM stockEC \
-    LEFT OUTER JOIN stockECDemanda \
-    ON stockEC.sku = stockECDemanda.sku \
-    WHERE stockECDemanda.sku IS NULL \
-    AND stockEC.sku NOT LIKE 'D%'
-    """
+            SELECT stockEC.*  \
+            FROM stockEC \
+            LEFT OUTER JOIN stockECDemanda \
+            ON stockEC.sku = stockECDemanda.sku \
+            WHERE stockECDemanda.sku IS NULL \
+            AND stockEC.sku NOT LIKE 'D%'
+            """
     stockECFinal = sqldf(query)
     print("Stock EC Sin demanda ", stockECFinal.shape)  # Stock sin demanda
 
     # Stock Actual
-    stockActual601 = stockActual[stockActual["source_code"] == "601"]
+    stockActual601 = stockActual[ (stockActual["source_code"] == "601" ) & ( stockActual["sku"].str[0] != "D" )]
     print("Stock Actual EC :", stockActual601.shape)
     bar["value"] = 50
 
@@ -195,13 +201,12 @@ def ejecutar_cruce_ec():
     log = log + "Stock de productos actuales" + "\n"
     text_area.insert( tkinter.INSERT, log)
     query = """
-    SELECT stockECFinal.* \
-    FROM stockECFinal \
-    INNER JOIN stockActual601 \
-    ON ( stockActual601.sku = stockECFinal.sku AND stockActual601.source_code = stockECFinal.source_code ) \
-    WHERE stockECFinal.sku NOT LIKE 'D%' AND stockActual601.quantity <> stockECFinal.quantity \
-    AND stockActual601.sku NOT LIKE 'D%' 
-    """
+            SELECT stockECFinal.* \
+            FROM stockECFinal \
+            INNER JOIN stockActual601 \
+            ON ( stockActual601.sku = stockECFinal.sku AND stockActual601.source_code = stockECFinal.source_code ) \
+            WHERE stockActual601.quantity <> stockECFinal.quantity 
+            """
     stockECActualizar = sqldf(query)
     print("Stock a actualizar: ", stockECActualizar.shape)
     #stockECActualizar.drop(columns={"level_0", "index"}, inplace=True)
@@ -212,13 +217,12 @@ def ejecutar_cruce_ec():
     text_area.insert( tkinter.INSERT, log)
 
     query = """
-     SELECT stockECFinal.* \
-     FROM stockECFinal \
-     LEFT OUTER JOIN stockActual601 \
-     ON ( stockActual601.sku = stockECFinal.sku AND stockActual601.source_code = stockECFinal.source_code ) \
-     WHERE stockActual601.sku IS NULL \
-     AND stockECFinal.sku NOT LIKE 'D%' 
-     """
+            SELECT stockECFinal.* \
+            FROM stockECFinal \
+            LEFT OUTER JOIN stockActual601 \
+            ON ( stockActual601.sku = stockECFinal.sku AND stockActual601.source_code = stockECFinal.source_code ) \
+            WHERE stockActual601.sku IS NULL \
+            """
     stockECNuevo = sqldf(query)
     print("Stock nuevo a cargar ", stockECNuevo.shape)
     # stockECActualizar.drop(columns={"level_0", "index"}, inplace=True)
@@ -229,14 +233,13 @@ def ejecutar_cruce_ec():
 
     # Los que están en Stock Actual con stock y no están en Stock EC - APAGAR
     query = """
-    SELECT stockActual601.*  \
-    FROM stockActual601 \
-    LEFT OUTER JOIN stockECFinal \
-    ON ( stockActual601.sku = stockECFinal.sku AND stockActual601.source_code = stockECFinal.source_code ) \
-    WHERE stockECFinal.sku IS NULL  \
-    AND stockActual601.quantity > 0 \
-    AND stockActual601.sku NOT LIKE 'D%'
-    """
+            SELECT stockActual601.*  \
+            FROM stockActual601 \
+            LEFT OUTER JOIN stockECFinal \
+            ON ( stockActual601.sku = stockECFinal.sku AND stockActual601.source_code = stockECFinal.source_code ) \
+            WHERE stockECFinal.sku IS NULL  \
+            AND stockActual601.quantity > 0 \
+            """
     stockECApagar = sqldf(query)
     print("Stock a apagar: ", stockECApagar.shape)
     bar["value"] = 80
@@ -290,17 +293,17 @@ def ejecutar_cruce():
     bar["value"] = 40
 
     # print(stockNuevo.head())
-    # Los que están en tiendas selecionadas
+    # Los que están en tiendas selecionadas y en catálogo
     query = """
     SELECT stockNuevo.* \
     FROM stockNuevo \
     INNER JOIN catalogo \
     ON stockNuevo.sku = catalogo.sku \
-    WHERE stockNuevo.source_code in ('051', '104', '105', '108', '109', '200', '209', '300', '400', '500', '052', '057', '065', '060', '063') 
+    WHERE stockNuevo.source_code in ('051', '104', '105', '072', '109', '200', '209', '300', '400', '500', '052', '057', '065', '060', '063') 
     """
     stockNuevoSel = sqldf(query)
     print(stockNuevoSel.shape)
-
+    # Stock de seguridad
     for i, fila in stockNuevoSel.iterrows():
         if fila.quantity > 3:
             stockNuevoSel['status'][i] = '1'
@@ -309,39 +312,38 @@ def ejecutar_cruce():
             stockNuevoSel['status'][i] = '0'
             stockNuevoSel['quantity'][i] = 0
 
-    print(str(i) + " registros actualizados")
+    print(str(i) + " stock de seguridad actualizado")
 
     # PASO 1
-    print("1. Cruce Stock actual y nuevo a cargar - Actualizar Stock")
+    print("1. Cruce Stock nuevo a cargar vs stock actual - Actualizar Stock")
     query = """
             SELECT stockNuevoSel.* \
             FROM stockNuevoSel \
             INNER JOIN stockActual \
-            ON stockActual.sku = stockNuevoSel.sku AND stockActual.source_code = stockNuevoSel.source_code \
-            WHERE stockNuevoSel.source_code in ('051', '104', '105', '108', '109', '200', '209', '300', '400', '500', '052', '057', '065', '060', '063')  \
+            ON (stockActual.sku = stockNuevoSel.sku AND stockActual.source_code = stockNuevoSel.source_code) \
+            WHERE stockNuevoSel.source_code in ('051', '104', '105', '072', '109', '200', '209', '300', '400', '500', '052', '057', '065', '060', '063')  \
             AND stockNuevoSel.quantity <> stockActual.quantity
             """
     # print(query)
     log = log + "Realizando cruce" + "\n"
-    text_area.insert( tkinter.INSERT, log)
+    text_area.insert(tkinter.INSERT, log)
     stockNuevoUpdate = sqldf(query)
     #stockNuevoUpdate.drop(columns={"level_0", "index"}, inplace=True)
     log = log + str(stockNuevoUpdate.shape[0]) + " registros procesados" + "\n"
     text_area.insert( tkinter.INSERT, log)
-    print(stockNuevoUpdate.shape)
+    print("Total de coincidencias : ", stockNuevoUpdate.shape)
     bar["value"] = 60
 
     # PASO 2
-    # Los que están en tiendas selecionadas en stock actual , pero no existen en nuevo stock - Apagar
-    print("2. Los que están en tiendas selecionadas en stock actual , pero no existen en nuevo stock - Apagar")
+    print("2. Los que están en stock actual y no están en el nuevo > Apagar")
     query = """
     SELECT stockActual.* \
     FROM stockActual  \
     LEFT OUTER JOIN stockNuevoSel \
-    ON stockActual.sku = stockNuevoSel.sku AND stockActual.source_code = stockNuevoSel.source_code \
-    WHERE stockActual.source_code in ('051', '104', '105', '108', '109', '200', '209', '300', '400', '500', '052', '057', '065', '060', '063') \
+    ON (stockActual.sku = stockNuevoSel.sku AND stockActual.source_code = stockNuevoSel.source_code) \
+    WHERE stockActual.source_code in ('051', '104', '105', '072', '109', '200', '209', '300', '400', '500', '052', '057', '065', '060', '063') \
     AND stockNuevoSel.sku IS NULL \
-    AND stockActual.quantity <> 0 
+    AND stockActual.quantity > 0 
     """
     stockApagar = sqldf(query)
     stockApagar["status"] = 0
@@ -356,8 +358,9 @@ def ejecutar_cruce():
     SELECT stockNuevoSel.* \
     FROM stockNuevoSel  \
     LEFT OUTER JOIN stockActual \
-    ON stockActual.sku = stockNuevoSel.sku AND stockActual.source_code = stockNuevoSel.source_code \
-    WHERE stockActual.sku IS NULL
+    ON (stockActual.sku = stockNuevoSel.sku AND stockActual.source_code = stockNuevoSel.source_code) \
+    WHERE stockNuevoSel.source_code in ('051', '104', '105', '072', '109', '200', '209', '300', '400', '500', '052', '057', '065', '060', '063') \
+    AND stockActual.sku IS NULL
     """
     stockNuevoCargar = sqldf(query)
     #stockNuevoCargar.drop(columns={"level_0", "index"}, inplace=True)
@@ -367,11 +370,12 @@ def ejecutar_cruce():
     # 4. MIX
     print("4. Cruce")
     stockFinalSel = pd.concat([stockNuevoUpdate, stockApagar, stockNuevoCargar]).drop_duplicates()
+    #stockFinalSel = stockFinalSel[stockFinalSel['source_code'] == "209"]  ## Linea temporal para solo quedarse con una tienda
     print(stockFinalSel.shape)
     bar["value"] = 95
     #stockFinalSel.drop(columns={"index"}, inplace=True)
 
-    # 5. EXPPORTAR TIENDAS
+    # 5. EXPORTAR TIENDAS
     print("5. Exportar")
     exportar(stockFinalSel, "ActualizarApagarStockTienda_", 5000)
     log = log + "Archivos exportados" + "\n"
@@ -476,4 +480,3 @@ if __name__ == '__main__':
     bar.grid(column=0, row=1, sticky="nsew", padx=5, pady=5,  columnspan=5)
     # run the application
     root.mainloop()
-
