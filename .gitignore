@@ -1,5 +1,6 @@
 # ignore ALL .log files
 *.log
+*.xls;xlsx;csv
 
 # ignore ALL files in ANY directory named temp
 dist/
