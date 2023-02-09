@@ -458,11 +458,9 @@ def ejecutar_cruce():
     exportar(stockFinalSel, "ActualizarApagarStockTienda_", 5000)
     bar["value"] = 80
 
-    '''
     print("6. Cargar")
     cargar_stock(stockFinalSel, 250)
     bar["value"] = 100
-    '''
 
 ###########################################################################
 def cargar_stock_listado():
