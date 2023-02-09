@@ -385,6 +385,7 @@ def ejecutar_cruce():
     """
     stockNuevoSel = sqldf(query)
     print(stockNuevoSel.shape)
+
     # Stock de seguridad
     '''
     for i, fila in stockNuevoSel.iterrows():
