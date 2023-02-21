@@ -80,9 +80,12 @@ class MagentoApiRestClient:
 
   def setSourceProduct(self,  data):
       url_update =  STORE_URL+ "/inventory/source-items"
+      #print(data)
       response = requests.post(url_update, data=json.dumps(data), headers={ 'Authorization' : self.get_token() ,  'content-type': 'application/json'} )  # Make a PUT request to the URL
+      #print(response)
       if response.status_code !=200:
         print(f"Request returned {response.status_code} : '{response.reason}'")
+
       return response.status_code
 
 ######################################################### Funciones de interfase
@@ -320,8 +323,9 @@ def ejecutar_cruce_ec():
             LEFT OUTER JOIN stockECFinal \
             ON ( stockActual601.sku = stockECFinal.sku AND stockActual601.source_code = stockECFinal.source_code ) \
             WHERE stockECFinal.sku IS NULL  \
-            AND stockActual601.quantity > 0 \
+            AND stockActual601.quantity > 0 
             """
+
     stockECApagar = sqldf(query)
     print("Stock a apagar: ", stockECApagar.shape)
     bar["value"] = 55
@@ -339,8 +343,8 @@ def ejecutar_cruce_ec():
     exportar(finalEC, "ActualizarApagarStockTienda601_", 5000)
     bar["value"] = 70
 
-    print("****** Cargar ********* ")
-    cargar_stock(finalEC, 250)
+    #print("****** Cargar ********* ")
+    #cargar_stock(finalEC, 250)
     bar["value"] = 100
 
 
@@ -434,8 +438,7 @@ def ejecutar_cruce():
     SELECT stockNuevoSel.* \
     FROM stockNuevoSel  \
     LEFT OUTER JOIN stockActual \
-    ON (stockActual.sku = stockNuevoSel.sku AND stockActual.source_code = stockNuevoSel.source_code \
-        AND stockNuevoSel.quantity <> stockActual.quantity ) \
+    ON (stockActual.sku = stockNuevoSel.sku AND stockActual.source_code = stockNuevoSel.source_code ) \
     WHERE ( stockNuevoSel.status = 1 AND stockNuevoSel.quantity > 0 ) \
     AND ( stockActual.sku IS NULL OR  stockActual.sku = "" )
     """
@@ -459,8 +462,8 @@ def ejecutar_cruce():
     exportar(stockFinalSel, "ActualizarApagarStockTienda_", 5000)
     bar["value"] = 80
 
-    print("6. Cargar")
-    cargar_stock(stockFinalSel, 250)
+    #print("6. Cargar")
+    #cargar_stock(stockFinalSel, 250)
     bar["value"] = 100
 
 ###########################################################################
@@ -573,10 +576,12 @@ def cargar_stock( lista, cantLote ):
             "sourceItems": resultado[rango_inferior:rango_superior]
         }
         response = client.setSourceProduct(data)
+
         print("lote :", i, " rango [", rango_inferior, "-", rango_superior, "] / Resultado:", response)
         rango_inferior = rango_superior + 1
 
         if response == 400:
+            print("Error en envío")
             nuevo = nuevo + resultado[rango_inferior:rango_superior]
 
     end = timer()
